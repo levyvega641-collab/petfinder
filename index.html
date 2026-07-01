@@ -141,7 +141,10 @@
 
   firebase.initializeApp(firebaseConfig);
   const auth = firebase.auth();
+  // Permite usar el número de prueba sin resolver reCAPTCHA (solo para pruebas)
+  auth.settings.appVerificationDisabledForTesting = true;
 
+  // Elementos del DOM
   const form = document.getElementById('registroForm');
   const telefonoInput = document.getElementById('telefono');
   const ladaSelect = document.getElementById('lada');
@@ -160,14 +163,17 @@
 
   let confirmationResult = null;
 
+  // reCAPTCHA invisible (requerido por Firebase para evitar spam de SMS)
   window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
     size: 'invisible'
   });
 
+  // Solo permitir números al escribir
   telefonoInput.addEventListener('input', () => {
     telefonoInput.value = telefonoInput.value.replace(/[^0-9 ]/g, '');
   });
 
+  // Paso 1: enviar el código SMS
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorTelefono.textContent = '';
@@ -196,6 +202,7 @@
     }
   });
 
+  // Paso 2: verificar el código que el usuario recibió
   codigoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorCodigo.textContent = '';
@@ -208,6 +215,7 @@
 
     try {
       const result = await confirmationResult.confirm(codigo);
+      // result.user contiene el usuario ya registrado en Firebase
       numeroConfirmado.textContent = 'Tu número ' + result.user.phoneNumber + ' quedó verificado';
       codigoView.classList.add('hidden');
       successView.classList.remove('hidden');
