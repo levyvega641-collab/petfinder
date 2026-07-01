@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Registro con teléfono</title>
+<title>Petfinder - Registro</title>
 <style>
   :root{
     --bg:#0f1115;
@@ -34,26 +34,10 @@
     width:100%;
     max-width:380px;
   }
-  h1{
-    font-size:22px;
-    margin:0 0 6px;
-  }
-  p.sub{
-    color:var(--muted);
-    font-size:14px;
-    margin:0 0 24px;
-  }
-  label{
-    display:block;
-    font-size:13px;
-    margin-bottom:6px;
-    color:var(--muted);
-  }
-  .phone-row{
-    display:flex;
-    gap:8px;
-    margin-bottom:6px;
-  }
+  h1{ font-size:22px; margin:0 0 6px; }
+  p.sub{ color:var(--muted); font-size:14px; margin:0 0 24px; }
+  label{ display:block; font-size:13px; margin-bottom:6px; color:var(--muted); }
+  .phone-row{ display:flex; gap:8px; margin-bottom:6px; }
   select, input{
     background:#0f1115;
     border:1px solid var(--border);
@@ -62,23 +46,12 @@
     padding:12px;
     font-size:15px;
     outline:none;
+    width:100%;
   }
-  select{
-    width:90px;
-  }
-  input[type="tel"]{
-    flex:1;
-    min-width:0;
-  }
-  select:focus, input:focus{
-    border-color:var(--accent);
-  }
-  .error-msg{
-    color:var(--error);
-    font-size:12px;
-    min-height:16px;
-    margin-bottom:14px;
-  }
+  select{ width:90px; }
+  input[type="tel"], input[type="text"]{ flex:1; min-width:0; }
+  select:focus, input:focus{ border-color:var(--accent); }
+  .error-msg{ color:var(--error); font-size:12px; min-height:16px; margin-bottom:14px; }
   button{
     width:100%;
     padding:13px;
@@ -93,14 +66,11 @@
   }
   button:hover{opacity:.9;}
   button:disabled{opacity:.5;cursor:not-allowed;}
-  .success{
-    text-align:center;
-  }
-  .success .check{
-    font-size:40px;
-    margin-bottom:10px;
-  }
+  .success{ text-align:center; }
+  .success .check{ font-size:40px; margin-bottom:10px; }
   .hidden{display:none;}
+  #recaptcha-container{ margin-bottom:14px; }
+  .codigo-group{ margin-top:10px; }
 </style>
 </head>
 <body>
@@ -108,7 +78,7 @@
 <div class="card">
 
   <div id="formView">
-    <h1>Crea tu cuenta</h1>
+    <h1>🐾 Petfinder</h1>
     <p class="sub">Regístrate con tu número de teléfono</p>
 
     <form id="registroForm" novalidate>
@@ -125,62 +95,127 @@
       </div>
       <div class="error-msg" id="errorTelefono"></div>
 
-      <button type="submit">Enviar código</button>
+      <div id="recaptcha-container"></div>
+
+      <button type="submit" id="btnEnviar">Enviar código</button>
+    </form>
+  </div>
+
+  <div id="codigoView" class="hidden">
+    <h1>Verifica tu número</h1>
+    <p class="sub" id="numeroEnviado"></p>
+    <form id="codigoForm" novalidate>
+      <div class="codigo-group">
+        <label for="codigo">Código de 6 dígitos</label>
+        <input type="text" id="codigo" placeholder="123456" inputmode="numeric" maxlength="6">
+      </div>
+      <div class="error-msg" id="errorCodigo"></div>
+      <button type="submit">Verificar</button>
     </form>
   </div>
 
   <div id="successView" class="success hidden">
     <div class="check">✅</div>
-    <h1>Código enviado</h1>
+    <h1>¡Bienvenido a Petfinder!</h1>
     <p class="sub" id="numeroConfirmado"></p>
-    <button onclick="reiniciar()">Registrar otro número</button>
+    <button onclick="location.reload()">Registrar otro número</button>
   </div>
 
 </div>
 
+<!-- Firebase SDKs (versión compat, para usar sin npm/build tools) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+
 <script>
+  // --- Configuración de tu proyecto Petfinder en Firebase ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyDl8cUQR8W5MxDQ79mlEu_6PP8kWOeVHwg",
+    authDomain: "petfinder-ai.firebaseapp.com",
+    projectId: "petfinder-ai",
+    storageBucket: "petfinder-ai.firebasestorage.app",
+    messagingSenderId: "839802560707",
+    appId: "1:839802560707:web:b5c45667bea15692b00276",
+    measurementId: "G-RSYQSR3GVK"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+
   const form = document.getElementById('registroForm');
   const telefonoInput = document.getElementById('telefono');
   const ladaSelect = document.getElementById('lada');
   const errorTelefono = document.getElementById('errorTelefono');
+  const btnEnviar = document.getElementById('btnEnviar');
+
   const formView = document.getElementById('formView');
+  const codigoView = document.getElementById('codigoView');
   const successView = document.getElementById('successView');
+
+  const codigoForm = document.getElementById('codigoForm');
+  const codigoInput = document.getElementById('codigo');
+  const errorCodigo = document.getElementById('errorCodigo');
+  const numeroEnviado = document.getElementById('numeroEnviado');
   const numeroConfirmado = document.getElementById('numeroConfirmado');
 
-  // Solo permitir números al escribir
+  let confirmationResult = null;
+
+  window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+    size: 'invisible'
+  });
+
   telefonoInput.addEventListener('input', () => {
     telefonoInput.value = telefonoInput.value.replace(/[^0-9 ]/g, '');
   });
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorTelefono.textContent = '';
 
     const numeroLimpio = telefonoInput.value.replace(/\s/g, '');
-
     if (numeroLimpio.length < 8 || numeroLimpio.length > 12) {
       errorTelefono.textContent = 'Ingresa un número de teléfono válido';
       telefonoInput.focus();
       return;
     }
 
-    const numeroCompleto = ladaSelect.value + ' ' + telefonoInput.value;
+    const numeroCompleto = ladaSelect.value + numeroLimpio;
+    btnEnviar.disabled = true;
+    btnEnviar.textContent = 'Enviando...';
 
-    // Aquí es donde normalmente enviarías el número a tu backend
-    // para generar y enviar un código SMS de verificación.
-    // Ejemplo:
-    // fetch('/api/registro', { method:'POST', body: JSON.stringify({telefono:numeroCompleto}) })
-
-    numeroConfirmado.textContent = 'Enviamos un código a ' + numeroCompleto;
-    formView.classList.add('hidden');
-    successView.classList.remove('hidden');
+    try {
+      confirmationResult = await auth.signInWithPhoneNumber(numeroCompleto, window.recaptchaVerifier);
+      numeroEnviado.textContent = 'Enviamos un código a ' + numeroCompleto;
+      formView.classList.add('hidden');
+      codigoView.classList.remove('hidden');
+    } catch (err) {
+      console.error(err);
+      errorTelefono.textContent = 'No se pudo enviar el código. Intenta de nuevo.';
+      btnEnviar.disabled = false;
+      btnEnviar.textContent = 'Enviar código';
+    }
   });
 
-  function reiniciar(){
-    form.reset();
-    successView.classList.add('hidden');
-    formView.classList.remove('hidden');
-  }
+  codigoForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorCodigo.textContent = '';
+
+    const codigo = codigoInput.value.trim();
+    if (codigo.length !== 6) {
+      errorCodigo.textContent = 'El código debe tener 6 dígitos';
+      return;
+    }
+
+    try {
+      const result = await confirmationResult.confirm(codigo);
+      numeroConfirmado.textContent = 'Tu número ' + result.user.phoneNumber + ' quedó verificado';
+      codigoView.classList.add('hidden');
+      successView.classList.remove('hidden');
+    } catch (err) {
+      console.error(err);
+      errorCodigo.textContent = 'Código incorrecto. Intenta de nuevo.';
+    }
+  });
 </script>
 
 </body>
