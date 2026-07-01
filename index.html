@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro con teléfono</title>
+<style>
+  :root{
+    --bg:#0f1115;
+    --card:#171a21;
+    --accent:#4ade80;
+    --text:#f2f3f5;
+    --muted:#8b93a1;
+    --error:#ff6b6b;
+    --border:#2a2e38;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--bg);
+    font-family:'Segoe UI', system-ui, sans-serif;
+    color:var(--text);
+    padding:20px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:32px 28px;
+    width:100%;
+    max-width:380px;
+  }
+  h1{
+    font-size:22px;
+    margin:0 0 6px;
+  }
+  p.sub{
+    color:var(--muted);
+    font-size:14px;
+    margin:0 0 24px;
+  }
+  label{
+    display:block;
+    font-size:13px;
+    margin-bottom:6px;
+    color:var(--muted);
+  }
+  .phone-row{
+    display:flex;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  select, input{
+    background:#0f1115;
+    border:1px solid var(--border);
+    border-radius:8px;
+    color:var(--text);
+    padding:12px;
+    font-size:15px;
+    outline:none;
+  }
+  select{
+    width:90px;
+  }
+  input[type="tel"]{
+    flex:1;
+    min-width:0;
+  }
+  select:focus, input:focus{
+    border-color:var(--accent);
+  }
+  .error-msg{
+    color:var(--error);
+    font-size:12px;
+    min-height:16px;
+    margin-bottom:14px;
+  }
+  button{
+    width:100%;
+    padding:13px;
+    border:none;
+    border-radius:8px;
+    background:var(--accent);
+    color:#0f1115;
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    transition:opacity .15s;
+  }
+  button:hover{opacity:.9;}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  .success{
+    text-align:center;
+  }
+  .success .check{
+    font-size:40px;
+    margin-bottom:10px;
+  }
+  .hidden{display:none;}
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <div id="formView">
+    <h1>Crea tu cuenta</h1>
+    <p class="sub">Regístrate con tu número de teléfono</p>
+
+    <form id="registroForm" novalidate>
+      <label for="telefono">Número de teléfono</label>
+      <div class="phone-row">
+        <select id="lada">
+          <option value="+52">🇲🇽 +52</option>
+          <option value="+1">🇺🇸 +1</option>
+          <option value="+34">🇪🇸 +34</option>
+          <option value="+57">🇨🇴 +57</option>
+          <option value="+54">🇦🇷 +54</option>
+        </select>
+        <input type="tel" id="telefono" placeholder="55 1234 5678" inputmode="numeric" autocomplete="tel-national">
+      </div>
+      <div class="error-msg" id="errorTelefono"></div>
+
+      <button type="submit">Enviar código</button>
+    </form>
+  </div>
+
+  <div id="successView" class="success hidden">
+    <div class="check">✅</div>
+    <h1>Código enviado</h1>
+    <p class="sub" id="numeroConfirmado"></p>
+    <button onclick="reiniciar()">Registrar otro número</button>
+  </div>
+
+</div>
+
+<script>
+  const form = document.getElementById('registroForm');
+  const telefonoInput = document.getElementById('telefono');
+  const ladaSelect = document.getElementById('lada');
+  const errorTelefono = document.getElementById('errorTelefono');
+  const formView = document.getElementById('formView');
+  const successView = document.getElementById('successView');
+  const numeroConfirmado = document.getElementById('numeroConfirmado');
+
+  // Solo permitir números al escribir
+  telefonoInput.addEventListener('input', () => {
+    telefonoInput.value = telefonoInput.value.replace(/[^0-9 ]/g, '');
+  });
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    errorTelefono.textContent = '';
+
+    const numeroLimpio = telefonoInput.value.replace(/\s/g, '');
+
+    if (numeroLimpio.length < 8 || numeroLimpio.length > 12) {
+      errorTelefono.textContent = 'Ingresa un número de teléfono válido';
+      telefonoInput.focus();
+      return;
+    }
+
+    const numeroCompleto = ladaSelect.value + ' ' + telefonoInput.value;
+
+    // Aquí es donde normalmente enviarías el número a tu backend
+    // para generar y enviar un código SMS de verificación.
+    // Ejemplo:
+    // fetch('/api/registro', { method:'POST', body: JSON.stringify({telefono:numeroCompleto}) })
+
+    numeroConfirmado.textContent = 'Enviamos un código a ' + numeroCompleto;
+    formView.classList.add('hidden');
+    successView.classList.remove('hidden');
+  });
+
+  function reiniciar(){
+    form.reset();
+    successView.classList.add('hidden');
+    formView.classList.remove('hidden');
+  }
+</script>
+
+</body>
+</html>
